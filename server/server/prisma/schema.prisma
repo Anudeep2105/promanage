@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum ProjectMethodology {
+  AGILE
+  WATERFALL
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum SprintStatus {
+  PLANNED
+  ACTIVE
+  COMPLETED
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model User {
+  id            String    @id // Clerk ID
+  email         String    @unique
+  name          String?
+  avatarUrl     String?
+  workspaces    WorkspaceMember[]
+  sentInvitations WorkspaceInvitation[] @relation("InvitedBy")
+  reportedTasks Task[]    @relation("ReportedBy")
+  assignedTasks Task[]    @relation("AssignedTo")
+  comments      Comment[]
+  activity      Activity[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Workspace {
+  id        String            @id @default(uuid())
+  name      String
+  slug      String            @unique
+  ownerId   String
+  members   WorkspaceMember[]
+  invitations WorkspaceInvitation[]
+  projects  Project[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([ownerId])
+}
+
+model WorkspaceMember {
+  workspaceId String
+  userId      String
+  role        UserRole      @default(MEMBER)
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
+  user        User          @relation(fields: [userId], references: [id])
+
+  @@id([workspaceId, userId])
+  @@index([userId])
+}
+
+model WorkspaceInvitation {
+  id                String           @id @default(uuid())
+  clerkInvitationId String?          @unique
+  workspaceId       String
+  email             String
+  role              UserRole         @default(MEMBER)
+  invitedById       String
+  status            InvitationStatus @default(PENDING)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  workspace         Workspace        @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  invitedBy         User             @relation("InvitedBy", fields: [invitedById], references: [id])
+
+  @@unique([workspaceId, email])
+  @@index([email, status])
+}
+
+model Project {
+  id          String             @id @default(uuid())
+  workspaceId String
+  name        String
+  description String?
+  status      ProjectStatus      @default(ACTIVE)
+  methodology ProjectMethodology @default(AGILE)
+  workspace   Workspace          @relation(fields: [workspaceId], references: [id])
+  tasks       Task[]
+  sprints     Sprint[]
+  labels      Label[]
+  activity    Activity[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@index([workspaceId, status])
+}
+
+model Sprint {
+  id        String       @id @default(uuid())
+  projectId String
+  name      String
+  startDate DateTime
+  endDate   DateTime
+  goal      String?
+  status    SprintStatus @default(PLANNED)
+  project   Project      @relation(fields: [projectId], references: [id])
+  tasks     Task[]
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@index([projectId, startDate])
+}
+
+model Task {
+  id          String   @id @default(uuid())
+  projectId   String
+  sprintId    String?
+  assigneeId  String?
+  reporterId  String
+  title       String
+  description String?
+  priority    Priority @default(MEDIUM)
+  status      String   @default("Todo")
+  startDate   DateTime?
+  dueDate     DateTime?
+  order       Float    @default(0)
+
+  project     Project  @relation(fields: [projectId], references: [id])
+  sprint      Sprint?  @relation(fields: [sprintId], references: [id])
+  assignee    User?    @relation("AssignedTo", fields: [assigneeId], references: [id])
+  reporter    User     @relation("ReportedBy", fields: [reporterId], references: [id])
+
+  comments    Comment[]
+  dependencies TaskDependency[] @relation("BlockedTask")
+  blockers     TaskDependency[] @relation("BlockerTask")
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([projectId, status, order])
+  @@index([sprintId])
+  @@index([assigneeId])
+  @@index([reporterId])
+  @@index([dueDate])
+}
+
+model TaskDependency {
+  id            String @id @default(uuid())
+  blockerTaskId String
+  blockedTaskId String
+
+  blocker       Task   @relation("BlockerTask", fields: [blockerTaskId], references: [id])
+  blocked       Task   @relation("BlockedTask", fields: [blockedTaskId], references: [id])
+
+  @@unique([blockerTaskId, blockedTaskId])
+  @@index([blockedTaskId])
+}
+
+model Comment {
+  id        String   @id @default(uuid())
+  taskId    String
+  userId    String
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task      Task     @relation(fields: [taskId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([taskId, createdAt])
+  @@index([userId])
+}
+
+model Activity {
+  id        String   @id @default(uuid())
+  projectId String
+  actorId   String
+  action    String
+  detail    String
+  createdAt DateTime @default(now())
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  actor     User     @relation(fields: [actorId], references: [id])
+
+  @@index([projectId, createdAt])
+}
+
+model Label {
+  id        String   @id @default(uuid())
+  projectId String
+  name      String
+  color     String
+  project   Project  @relation(fields: [projectId], references: [id])
+
+  @@unique([projectId, name])
+}

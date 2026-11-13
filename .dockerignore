@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+.env
+.env.*
+!.env.local.example
+server/server/node_modules
+server/server/.local-postgres
+server/server/.env
+server/server/.env.*
+server/server/server.log
+coverage
+*.tsbuildinfo

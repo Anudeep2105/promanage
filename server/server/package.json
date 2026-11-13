@@ -1,0 +1,30 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "dev:local": "node scripts/with-local-database.mjs dev",
+    "db:local:push": "node scripts/with-local-database.mjs prisma db push --schema prisma/schema.prisma",
+    "typecheck": "tsc --ignoreConfig --noEmit --target ES2022 --module NodeNext --moduleResolution NodeNext --esModuleInterop --strict --skipLibCheck --types node src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@clerk/backend": "^3.27.0",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@hono/node-server": "^2.1.4",
+    "@prisma/client": "^5.22.0",
+    "@tanstack/react-query": "^5.104.2",
+    "axios": "^1.20.0",
+    "hono": "^4.13.13",
+    "tsx": "^4.23.15"
+  },
+  "devDependencies": {
+    "prisma": "^5.22.0"
+  }
+}
